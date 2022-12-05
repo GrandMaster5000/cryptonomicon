@@ -1,24 +1,6 @@
 # cryptonomicon
 
-## Project setup
-```
-yarn install
-```
+__Приложения для отслеживания курсов криптовалют.__
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
+Проект создан в рамках освоения VueJS
 
-### Compiles and minifies for production
-```
-yarn build
-```
-
-### Lints and fixes files
-```
-yarn lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
