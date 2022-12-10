@@ -1,11 +1,11 @@
 <template>
  <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
-  <!-- <div class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center">
+  <div v-if="isLoading" class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center">
     <svg class="animate-spin -ml-1 mr-3 h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
-  </div> -->
+  </div>
   <div class="container">
     <section>
       <div class="flex">
@@ -17,6 +17,9 @@
             <input
               v-model="ticker"
               @keydown.enter="add"
+              @keydown.right="handleDisabledError"
+              @keydown.left="handleDisabledError"
+              @input="handleInputTicker"
               type="text"
               name="wallet"
               id="wallet"
@@ -24,21 +27,22 @@
               placeholder="Например DOGE"
             />
           </div>
-          <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              BTC
-            </span>
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              DOGE
-            </span>
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              BCH
-            </span>
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              CHD
-            </span>
-          </div>
-          <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+            <div 
+              v-if="supportCoins.length"
+              class="flex bg-white shadow-md p-1 rounded-md flex-wrap"
+            >
+            <span 
+                v-for="coin in supportCoins" 
+                :key="coin" 
+                @click="add(coin)" 
+                @keydown.enter="add(coin)"
+                :tabindex="0" 
+                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
+              >
+                {{ coin }}
+              </span>
+            </div>
+          <div v-if="isError" class="text-sm text-red-600">Такой тикер уже добавлен</div>
         </div>
       </div>
       <button
@@ -69,7 +73,7 @@
           <div
             v-for="t in tickers"
             :key="t"
-            @click="(sel = t)"
+            @click="select(t)"
             :class="{
               'border-4': sel === t
             }"
@@ -157,15 +161,43 @@ export default {
     return {
       ticker: '',
       tickers: [],
+      supportCoins: [],
       sel: null,
-      graph: []
+      graph: [],
+      isError: false,
+
+      isLoading: true,
+      coinList: []
     }
   },
 
+  created() {
+    (async () => {
+      const res = await fetch('https://min-api.cryptocompare.com/data/all/coinlist?summary=true')
+
+      const { Data: data} = await res.json();
+
+      for (let prop in data) {
+        const item = data[prop]
+        this.coinList.push({
+          symbol: item.Symbol,
+          fullName: item.FullName
+        })
+      }
+
+      this.isLoading = false
+    })()
+  },
+
   methods: {
-    add() {
+    add(ticker = this.ticker) {
+      if (this.tickers.find(ticker => ticker.name.toLowerCase() === ticker.toLowerCase())) {
+        this.isError = true
+        return
+      }
+
       const currentTicker = {
-        name: this.ticker,
+        name: ticker,
         price: '0'
       }
 
@@ -181,6 +213,7 @@ export default {
         }
       }, 3000)
       this.ticker = ''
+      this.supportCoins = []
     },
 
     select(ticker) {
@@ -203,6 +236,51 @@ export default {
           return isNaN(value) ? 5 : value 
         }
       )
+    },
+
+    handleDisabledError() {
+      this.isError = false
+    },
+
+    handleInputTicker() {
+      const innerSupportCoins = []
+
+      const sortedCoinList = this.coinList.sort((a, b) => {
+        const prioritySymbol = (indexSymbol = 0, indexTickerSymbol = 0) => {
+          if (a.symbol.length - 1 < indexSymbol || b.symbol.length - 1 < indexSymbol) {
+            return 0
+          }
+          
+          const isASymbolEqualTicker = a.symbol[indexSymbol].toLowerCase() === this.ticker[indexTickerSymbol]?.toLowerCase()
+          const isBSymbolEqualTicker = b.symbol[indexSymbol].toLowerCase() === this.ticker[indexTickerSymbol]?.toLowerCase()
+          
+          if(isASymbolEqualTicker && isBSymbolEqualTicker) {
+            return prioritySymbol(indexSymbol + 1, indexTickerSymbol + 1)
+          } else if (isASymbolEqualTicker) {
+            return -1
+          } else if (isBSymbolEqualTicker) {
+            return 1
+          }
+
+          return prioritySymbol(indexSymbol + 1, indexTickerSymbol)
+        }
+
+        return prioritySymbol()
+      })
+
+      for (let coin of sortedCoinList) {
+        if (innerSupportCoins.length === 4) {
+          break
+        }
+
+        const lowerTicker = this.ticker.toLowerCase()
+        if (coin.symbol.toLowerCase().includes(lowerTicker) || coin.fullName.toLowerCase().includes(lowerTicker)) {
+          innerSupportCoins.push(coin.symbol)
+        }
+      }
+      console.log(innerSupportCoins)
+      this.supportCoins = innerSupportCoins
+      this.handleDisabledError()
     }
   }
 };
