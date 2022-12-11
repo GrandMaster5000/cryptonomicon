@@ -249,7 +249,7 @@ export default {
     normalizedGraph() {
       const maxValue = Math.max(...this.graph)
       const minValue = Math.min(...this.graph)
-      
+       
       return this.graph.map(
         price => {
           const value = 5 + ((price - minValue) * 95) / (maxValue - minValue)
@@ -338,6 +338,12 @@ export default {
         document.title,
         filteredUrl
       )
+    },
+
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page -= 1
+      }
     },
 
     ticker() {
