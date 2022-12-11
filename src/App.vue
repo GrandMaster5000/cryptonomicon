@@ -258,6 +258,13 @@ export default {
         }
       )
     },
+
+    pageStateOptions() {
+      return {
+        filter: this.filter,
+        page: this.page,
+      }
+    }
   },
 
   methods: {
@@ -286,9 +293,7 @@ export default {
       }
 
       this.filter= ''
-      this.tickers.push(currentTicker)
-
-      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers))
+      this.tickers = [...this.tickers, currentTicker]
 
       this.subscribeToUpdates(currentTicker.name)
       this.ticker = ''
@@ -313,31 +318,23 @@ export default {
   },
 
   watch: {
+    tickers() {
+      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers))
+    },
+
     selectTicker() {
       this.graph = []
     },
 
     filter() {
       this.page = 1
-
-      let filteredUrl = `${window.location.pathname}?page=${this.page}`
-      
-      if (this.filter.trim()) {
-        filteredUrl = `${filteredUrl}&filter=${this.filter}`
-      }
-
-      window.history.pushState(
-        null,
-        document.title,
-        filteredUrl
-      )
     },
 
-    page() {
-      let filteredUrl = `${window.location.pathname}?page=${this.page}`
+    pageStateOptions(v) {
+      let filteredUrl = `${window.location.pathname}?page=${v.page}`
       
-      if (this.filter.trim()) {
-        filteredUrl = `${filteredUrl}&filter=${this.filter}`
+      if (v.filter.trim()) {
+        filteredUrl = `${filteredUrl}&filter=${v.filter}`
       }
 
       window.history.pushState(
