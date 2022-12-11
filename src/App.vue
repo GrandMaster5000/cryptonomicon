@@ -84,13 +84,13 @@
           Вперёд
         </button>
         <div>
-          Фильтр: <input v-model="filter"/> 
+          Фильтр: <input v-model="filter" @input="page = 1"/> 
         </div>
       </div>
       <hr class="w-full border-t border-gray-600 my-4" />
       <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div
-          v-for="t in filteredTickers()"
+          v-for="t in paginatedTickers"
           :key="t"
           @click="select(t)"
           :class="{
@@ -134,7 +134,7 @@
       </h3>
       <div class="flex items-end border-gray-600 border-b border-l h-64">
         <div
-          v-for="(bar, idx) in normalizeGraph()"
+          v-for="(bar, idx) in normalizedGraph"
           :key="idx"
           :style="{ height: `${bar}%` }"
           class="bg-purple-800 border w-10"
@@ -190,7 +190,6 @@ export default {
 
       page: 1,
       filter: '',
-      hasNextPage: false
     }
   },
 
@@ -229,6 +228,36 @@ export default {
 
       this.isLoading = false
     })()
+  },
+
+  computed: {
+    filteredTickers() {
+      return this.tickers.filter(ticker => ticker.name.includes(this.filter.toUpperCase()))
+    },
+    
+    paginatedTickers() {
+      const start = (this.page - 1) * 6;
+      const end = this.page * 6;
+
+      return this.filteredTickers.slice(start, end)
+    },
+
+    hasNextPage() {
+      return Math.ceil(this.filteredTickers.length / 6) !== this.page
+    },
+    
+    normalizedGraph() {
+      const maxValue = Math.max(...this.graph)
+      const minValue = Math.min(...this.graph)
+      
+      return this.graph.map(
+        price => {
+          const value = 5 + ((price - minValue) * 95) / (maxValue - minValue)
+
+          return isNaN(value) ? 5 : value 
+        }
+      )
+    },
   },
 
   methods: {
@@ -275,33 +304,9 @@ export default {
       this.tickers = this.tickers.filter(t => t !== ticker)
     },
 
-    normalizeGraph() {
-      const maxValue = Math.max(...this.graph)
-      const minValue = Math.min(...this.graph)
-      
-      return this.graph.map(
-        price => {
-          const value = 5 + ((price - minValue) * 95) / (maxValue - minValue)
-
-          return isNaN(value) ? 5 : value 
-        }
-      )
-    },
-
     handleDisabledError() {
       this.isError = false
     },
-
-    filteredTickers() {
-      const start = (this.page - 1) * 6;
-      const end = this.page * 6;
-
-      const filteredTic = this.tickers.filter(ticker => ticker.name.includes(this.filter.toUpperCase()))
-
-      this.hasNextPage = Math.ceil(filteredTic.length / 6) !== this.page 
-
-      return filteredTic.slice(start, end)
-    }
   },
 
   watch: {
